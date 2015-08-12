@@ -116,17 +116,22 @@ public class TiC
 	/**
 	 * @module.api
 	 */
-	public static final String EVENT_DOUBLE_CLICK = "dblclick";
-
-	/**
-	 * @module.api
-	 */
 	public static final String EVENT_DISPOSE_HANDLE = "disposehandle";
 
 	/**
 	 * @module.api
 	 */
+	public static final String EVENT_DOUBLE_CLICK = "dblclick";
+
+	/**
+	 * @module.api
+	 */
 	public static final String EVENT_DOUBLE_TAP = "doubletap";
+
+	/**
+	 * @module.api
+	 */
+	public static final String EVENT_DRAGEND = "dragend";
 
 	/**
 	 * @module.api
@@ -211,6 +216,11 @@ public class TiC
 	 * @module.api
 	 */
 	public static final String EVENT_NEW_INTENT = "newintent";
+
+	/**
+	 * @module.api
+	 */
+	public static final String EVENT_NO_RESULTS = "noresults";
 
 	/**
 	 * @module.api
@@ -440,7 +450,7 @@ public class TiC
 	/**
 	 * @module.api
 	 */
-	public static final String EVENT_DRAGEND = "dragend";
+	public static final String EVENT_SCROLLSTART = "scrollstart";
 
 	/**
 	 * @module.api
@@ -1145,6 +1155,11 @@ public class TiC
 	/**
 	 * @module.api
 	 */
+	public static final String PROPERTY_ELEVATION = "elevation";
+	
+	/**
+	 * @module.api
+	 */
 	public static final String PROPERTY_ELLIPSIZE = "ellipsize";
 	
 	/**
@@ -1299,6 +1314,11 @@ public class TiC
 	public static final String PROPERTY_FOOTER_VIEW = "footerView";
 
 	public static final String PROPERTY_FORWARD = "forward";
+	
+	/**
+	 * @module.api
+	 */
+	public static final String PROPERTY_FRAGMENT_ONLY = "fragmentOnly";
 
 	/**
 	 * @module.api
@@ -1339,6 +1359,11 @@ public class TiC
 	 * @module.api
 	 */
 	public static final String PROPERTY_HAS_CHILD = "hasChild";
+
+	/**
+	 * @module.api
+	 */
+	public static final String PROPERTY_HAS_LINK = "hasLink";
 
 	/**
 	 * @module.api
@@ -1389,7 +1414,12 @@ public class TiC
 	 * @module.api
 	 */
 	public static final String PROPERTY_HINT_TEXT = "hintText";
-	
+
+	/**
+	 * @module.api
+	 */
+	public static final String PROPERTY_HINT_TEXT_COLOR = "hintTextColor";
+
 	/**
 	 * @module.api
 	 */
@@ -1499,6 +1529,11 @@ public class TiC
 	/**
 	 * @module.api
 	 */
+	public static final String PROPERTY_LARGE_ICON = "largeIcon";
+
+	/**
+	 * @module.api
+	 */
 	public static final String PROPERTY_LASTNAME = "lastName";
 
 	/**
@@ -1520,7 +1555,12 @@ public class TiC
 	 * @module.api
 	 */
 	public static final String PROPERTY_LAYOUT_ID = "layoutId";
-
+	
+	/**
+	 * @module.api
+	 */
+	public static final String PROPERTY_LINES = "lines";
+	
 	/**
 	 * @module.api
 	 */
@@ -1622,7 +1662,12 @@ public class TiC
 	 * @module.api
 	 */
 	public static final String PROPERTY_MAX_LENGTH = "maxLength";
-
+	
+	/**
+	 * @module.api
+	 */
+	public static final String PROPERTY_MAX_LINES = "maxLines";
+	
 	/**
 	 * @module.api
 	 */
@@ -1780,21 +1825,46 @@ public class TiC
 	 * @module.api
 	 */
 	public static final String PROPERTY_ON_CREATE_WINDOW = "onCreateWindow";
+	
+	/**
+	 * @module.api
+	 */
+	public static final String PROPERTY_ONDATASTREAM = "ondatastream";
+
+	/**
+	 * @module.api
+	 */
+	public static final String PROPERTY_ONERROR = "onerror";
 
 	/**
 	 * @module.api
 	 */
 	public static final String PROPERTY_ON_HOME_ICON_ITEM_SELECTED = "onHomeIconItemSelected";
+	
+	/**
+	 * @module.api
+	 */
+	public static final String PROPERTY_ONLOAD = "onload";
 
 	/**
 	 * @module.api
 	 */
 	public static final String PROPERTY_ON_PREPARE_OPTIONS_MENU = "onPrepareOptionsMenu";
+	
+	/**
+	 * @module.api
+	 */
+	public static final String PROPERTY_ONREADYSTATECHANGE = "onreadystatechange";
 
 	/**
 	 * @module.api
 	 */
 	public static final String PROPERTY_ON_RECEIVED = "onReceived";
+	
+	/**
+	 * @module.api
+	 */
+	public static final String PROPERTY_ONSENDSTREAM = "onsendstream";
 
 	/**
 	 * @module.api
@@ -2126,6 +2196,11 @@ public class TiC
 	/**
 	 * @module.api
 	 */
+	public static final String PROPERTY_SEPARATOR_HEIGHT = "separatorHeight";
+
+	/**
+	 * @module.api
+	 */
 	public static final String PROPERTY_SHADOW_COLOR = "shadowColor";
 
 	/**
@@ -2406,6 +2481,21 @@ public class TiC
 	 * @module.api
 	 */
 	public static final String PROPERTY_TRANSFORM = "transform";
+	
+	/**
+	 * @module.api
+	 */
+	public static final String PROPERTY_TRANSLATION_X = "translationX";
+	
+	/**
+	 * @module.api
+	 */
+	public static final String PROPERTY_TRANSLATION_Y = "translationY";
+	
+	/**
+	 * @module.api
+	 */
+	public static final String PROPERTY_TRANSLATION_Z = "translationZ";
 
 	/**
 	 * @module.api

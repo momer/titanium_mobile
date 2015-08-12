@@ -15,7 +15,7 @@
 #import "TiAppiOSNotificationActionProxy.h"
 #import "TiAppiOSNotificationCategoryProxy.h"
 #import "TiAppiOSUserDefaultsProxy.h"
-
+#import "TiAppiOSUserActivityProxy.h"
 
 @implementation TiAppiOSProxy
 
@@ -82,6 +82,13 @@
             [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector
              (didRegisterUserNotificationSettingsNotification:) name:kTiUserNotificationSettingsNotification object:nil];
         }
+        if ((count == 1) && [type isEqual:@"watchkitextensionrequest"]) {
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(didReceiveWatchExtensionRequestNotification:) name:kTiWatchKitExtensionRequest object:nil];
+        }
+        if ((count == 1) && [type isEqual:@"handoff"]) {
+            [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(didReceiveHandOffNotification:) name:kTiHandOff object:nil];
+        }
     }
 
 }
@@ -127,10 +134,27 @@
         if ((count == 1) && [type isEqual:@"usernotificationsetting"]) {
             [[NSNotificationCenter defaultCenter] removeObserver:self name:kTiUserNotificationSettingsNotification object:nil];
         }
+        if ((count == 1) && [type isEqual:@"watchkitextensionrequest"]) {
+            [[NSNotificationCenter defaultCenter] removeObserver:self name:kTiWatchKitExtensionRequest object:nil];
+        }
+        if ((count == 1) && [type isEqual:@"handoff"]) {
+            [[NSNotificationCenter defaultCenter] removeObserver:self name:kTiHandOff object:nil];
+        }
     }
 }
 
 #pragma mark Public
+
+-(id)createUserActivity:(id)args
+{
+    NSString* activityType;
+    ENSURE_SINGLE_ARG(args,NSDictionary);
+    ENSURE_ARG_FOR_KEY(activityType, args, @"activityType", NSString);
+    
+    TiAppiOSUserActivityProxy *userActivityProxy = [[[TiAppiOSUserActivityProxy alloc] initWithOptions:args] autorelease];
+    
+    return userActivityProxy;
+}
 
 -(id)createUserDefaults:(id)args
 {
@@ -313,6 +337,18 @@
     }, NO);
 }
 
+-(NSArray*)supportedUserActivityTypes
+{    
+    if (![TiUtils isIOS8OrGreater]) {
+        return nil;
+    }
+    
+    NSArray *supportedActivityTypes = [[NSBundle mainBundle]
+                                       objectForInfoDictionaryKey:@"NSUserActivityTypes"];
+    
+    return supportedActivityTypes;
+}
+
 -(NSDictionary*)currentUserNotificationSettings
 {
     if (![TiUtils isIOS8OrGreater]) {
@@ -481,6 +517,12 @@
 	}
 }
 
+-(void)didReceiveHandOffNotification:(NSNotification*)notif
+{
+    NSDictionary *notification = [notif userInfo];
+    [self fireEvent:@"handoff" withObject:notification];
+}
+
 -(void)didReceiveLocalNotification:(NSNotification*)note
 {
 	NSDictionary *notification = [note object];
@@ -542,6 +584,45 @@
 {
     [self fireEvent:@"usernotificationsettings"
          withObject:[self formatUserNotificationSettings:(UIUserNotificationSettings*)[notificationSettings object]]];
+}
+
+#pragma mark Apple Watchkit notifications
+
+-(void)didReceiveWatchExtensionRequestNotification:(NSNotification*)notif
+{
+    if ([TiUtils isIOS9OrGreater]) {
+        DebugLog(@"[WARN] Deprecated. Please use Ti.App.iOS.WatchConnectivity instead");
+    }
+    [self fireEvent:@"watchkitextensionrequest" withObject:[notif userInfo]];
+}
+
+#pragma mark Apple Watchkit handleWatchKitExtensionRequest reply
+
+-(void)sendWatchExtensionReply:(id)args
+{
+    if ([TiUtils isIOS9OrGreater]) {
+        DebugLog(@"[WARN] Deprecated. Please use Ti.App.iOS.WatchConnectivity instead");
+    }
+    if(![TiUtils isIOS8OrGreater]) {
+        return;
+    }
+    
+    enum Args {
+        kArgKey = 0,
+        kArgCount,
+        kArgUserInfo = kArgCount
+    };
+    
+    ENSURE_TYPE(args,NSArray);
+    ENSURE_ARG_COUNT(args, kArgCount);
+    
+    NSString *key = [TiUtils stringValue:[args objectAtIndex:kArgKey]];
+
+    if([args count] > 1){
+        [[TiApp app] watchKitExtensionRequestHandler:key withUserInfo:[args objectAtIndex:kArgUserInfo]];
+    }else{
+        [[TiApp app] watchKitExtensionRequestHandler:key withUserInfo:nil];
+    }
 }
 
 -(void)setMinimumBackgroundFetchInterval:(id)value

@@ -1,7 +1,7 @@
 /*
  * build.js: Titanium Mobile CLI build command
  *
- * Copyright (c) 2012-2013, Appcelerator, Inc.  All Rights Reserved.
+ * Copyright (c) 2012-2015, Appcelerator, Inc.  All Rights Reserved.
  * See the LICENSE file for more information.
  */
 
@@ -34,7 +34,7 @@ fields.setup({
 exports.cliVersion = '>=3.2.1';
 exports.title = __('Build');
 exports.desc = __('builds a project');
-exports.extendedDesc = 'Builds an existing app or module project.';
+exports.extendedDesc = __('Builds an existing app or module project.');
 
 exports.config = function (logger, config, cli) {
 	fields.setup({ colors: cli.argv.colors });
@@ -109,42 +109,49 @@ exports.config = function (logger, config, cli) {
 
 								projectDir = appc.fs.resolvePath(projectDir);
 
-								// load the tiapp.xml
-								try {
-									if (fs.existsSync(path.join(projectDir, 'tiapp.xml'))) {
+								// load the tiapp.xml/timodule.xml
+								if (fs.existsSync(path.join(projectDir, 'tiapp.xml'))) {
+									try {
 										var tiapp = cli.tiapp = new tiappxml(path.join(projectDir, 'tiapp.xml'));
-
-										tiapp.properties || (tiapp.properties = {});
-
-										// make sure the tiapp.xml is sane
-										ti.validateTiappXml(logger, config, tiapp);
-
-										// check that the Titanium SDK version is correct
-										if (!ti.validateCorrectSDK(logger, config, cli, 'build')) {
-											throw new cli.GracefulShutdown();
-										}
-
-										cli.argv.type = 'app';
-
-									} else if (fs.existsSync(path.join(projectDir, 'timodule.xml'))) {
-										var timodule = cli.timodule = new tiappxml(path.join(projectDir, 'timodule.xml')),
-											manifest = cli.manifest = ti.loadModuleManifest(logger, path.join(projectDir, 'manifest'));
-
-										timodule.properties || (timodule.properties = {});
-
-										// make sure the module manifest is sane
-										ti.validateModuleManifest(logger, cli, manifest);
-
-										cli.argv.type = 'module';
-
-									} else {
-										// neither app nor module
-										return;
+									} catch (ex) {
+										logger.error(ex);
+										logger.log();
+										process.exit(1);
 									}
-								} catch (ex) {
-									logger.error(ex);
-									logger.log();
-									process.exit(1);
+
+									tiapp.properties || (tiapp.properties = {});
+
+									// make sure the tiapp.xml is sane
+									ti.validateTiappXml(logger, config, tiapp);
+
+									// check that the Titanium SDK version is correct
+									if (!ti.validateCorrectSDK(logger, config, cli, 'build')) {
+										throw new cli.GracefulShutdown();
+									}
+
+									cli.argv.type = 'app';
+
+								} else if (fs.existsSync(path.join(projectDir, 'timodule.xml'))) {
+									try {
+										var timodule = cli.tiapp = cli.timodule = new tiappxml(path.join(projectDir, 'timodule.xml'));
+									} catch (ex) {
+										logger.error(ex);
+										logger.log();
+										process.exit(1);
+									}
+
+									var manifest = cli.manifest = ti.loadModuleManifest(logger, path.join(projectDir, 'manifest'));
+
+									timodule.properties || (timodule.properties = {});
+
+									// make sure the module manifest is sane
+									ti.validateModuleManifest(logger, cli, manifest);
+
+									cli.argv.type = 'module';
+
+								} else {
+									// neither app nor module
+									return;
 								}
 
 								return projectDir;
@@ -225,12 +232,14 @@ exports.validate = function (logger, config, cli) {
 	if (cli.argv.type === 'module') {
 
 		return function (finished) {
-			var result = ti.validatePlatformOptions(logger, config, cli, 'buildModule');
-			if (result && typeof result == 'function') {
-				result(finished);
-			} else {
-				finished(result);
-			}
+			logger.log.init(function () {
+				var result = ti.validatePlatformOptions(logger, config, cli, 'buildModule');
+				if (result && typeof result == 'function') {
+					result(finished);
+				} else {
+					finished(result);
+				}
+			});
 		};
 
 	} else {
@@ -240,24 +249,26 @@ exports.validate = function (logger, config, cli) {
 		// since we need validate() to be async, we return a function in which the cli
 		// will immediately call
 		return function (finished) {
-			function next(result) {
-				if (result !== false) {
-					// no error, load the tiapp.xml plugins
-					ti.loadPlugins(logger, config, cli, cli.argv['project-dir'], function () {
+			logger.log.init(function () {
+				function next(result) {
+					if (result !== false) {
+						// no error, load the tiapp.xml plugins
+						ti.loadPlugins(logger, config, cli, cli.argv['project-dir'], function () {
+							finished(result);
+						});
+					} else {
 						finished(result);
-					});
-				} else {
-					finished(result);
+					}
 				}
-			}
 
-			// loads the platform specific bulid command and runs its validate() function
-			var result = ti.validatePlatformOptions(logger, config, cli, 'build');
-			if (result && typeof result == 'function') {
-				result(next);
-			} else {
-				next(result);
-			}
+				// loads the platform specific bulid command and runs its validate() function
+				var result = ti.validatePlatformOptions(logger, config, cli, 'build');
+				if (result && typeof result == 'function') {
+					result(next);
+				} else {
+					next(result);
+				}
+			});
 		};
 	}
 };
@@ -295,15 +306,23 @@ exports.run = function (logger, config, cli, finished) {
 		if (!counter++) {
 			var delta = appc.time.prettyDiff(cli.startTime, Date.now());
 			if (err) {
-				logger.error(__('Project failed to build after %s', delta));
-				(err.message || err.toString()).trim().split('\n').forEach(function (msg) {
-					logger.error(msg);
-				});
+				logger.error(__('An error occurred during build after %s', delta));
+				if (err instanceof appc.exception) {
+					err.dump(logger.error);
+				} else {
+					(err.message || err.toString()).trim().split('\n').forEach(function (msg) {
+						logger.error(msg);
+					});
+				}
 				logger.log();
 				logger.log.end();
 				process.exit(1);
 			} else {
-				logger.info(__('Project built successfully in %s', delta.cyan) + '\n');
+				// eventually all platforms will just show how long the build took since they
+				// are responsible for showing the own logging
+				if (platform !== 'iphone' || cli.argv['build-only']) {
+					logger.info(__('Project built successfully in %s', delta.cyan) + '\n');
+				}
 				logger.log.end();
 			}
 

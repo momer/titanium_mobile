@@ -14,17 +14,21 @@ import org.apache.http.auth.AuthSchemeFactory;
 import org.appcelerator.kroll.KrollDict;
 import org.appcelerator.kroll.KrollProxy;
 import org.appcelerator.kroll.annotations.Kroll;
-import org.appcelerator.kroll.common.Log;
 import org.appcelerator.titanium.TiBlob;
 import org.appcelerator.titanium.TiC;
 import org.appcelerator.titanium.TiContext;
 import org.appcelerator.titanium.util.TiConvert;
 
-import android.os.Build;
 import ti.modules.titanium.xml.DocumentProxy;
+import android.os.Build;
 
 @Kroll.proxy(creatableInModule=NetworkModule.class, propertyAccessors = {
-	TiC.PROPERTY_FILE
+	TiC.PROPERTY_FILE,
+	TiC.PROPERTY_ONSENDSTREAM,
+	TiC.PROPERTY_ONLOAD,
+	TiC.PROPERTY_ONERROR,
+	TiC.PROPERTY_ONREADYSTATECHANGE,
+	TiC.PROPERTY_ONDATASTREAM
 })
 public class HTTPClientProxy extends KrollProxy
 {
@@ -68,10 +72,12 @@ public class HTTPClientProxy extends KrollProxy
 		//Set the securityManager on the client if it is defined as a valid value
 		if (hasProperty(PROPERTY_SECURITY_MANAGER)) {
 			Object prop = getProperty(PROPERTY_SECURITY_MANAGER);
-			if (prop instanceof SecurityManagerProtocol) {
-				this.client.securityManager = (SecurityManagerProtocol)prop;
-			} else {
-				throw new IllegalArgumentException("Invalid argument passed to securityManager property. Does not conform to SecurityManagerProtocol");
+			if (prop != null) {
+				if (prop instanceof SecurityManagerProtocol) {
+					this.client.securityManager = (SecurityManagerProtocol)prop;
+				} else {
+					throw new IllegalArgumentException("Invalid argument passed to securityManager property. Does not conform to SecurityManagerProtocol");
+				}
 			}
 		}
 		client.setTlsVersion(TiConvert.toInt(getProperty(TiC.PROPERTY_TLS_VERSION), NetworkModule.TLS_DEFAULT));

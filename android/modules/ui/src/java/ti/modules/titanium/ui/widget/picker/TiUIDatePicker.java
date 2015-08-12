@@ -15,6 +15,8 @@ import org.appcelerator.kroll.common.Log;
 import org.appcelerator.titanium.TiC;
 import org.appcelerator.titanium.proxy.TiViewProxy;
 import org.appcelerator.titanium.util.TiConvert;
+import org.appcelerator.titanium.util.TiRHelper;
+import org.appcelerator.titanium.util.TiRHelper.ResourceNotFoundException;
 import org.appcelerator.titanium.util.TiUIHelper;
 import org.appcelerator.titanium.view.TiUIView;
 
@@ -41,15 +43,36 @@ public class TiUIDatePicker extends TiUIView
 		this(proxy);
 		Log.d(TAG, "Creating a date picker", Log.DEBUG_MODE);
 		
-		DatePicker picker = new DatePicker(activity)
-		{
-			@Override
-			protected void onLayout(boolean changed, int left, int top, int right, int bottom)
+		DatePicker picker;
+		// If it is not API Level 21 (Android 5.0), create picker normally.
+		// If not, it will inflate a spinner picker to address a bug.
+		if (Build.VERSION.SDK_INT != Build.VERSION_CODES.LOLLIPOP) {
+			picker = new DatePicker(activity)
 			{
-				super.onLayout(changed, left, top, right, bottom);
-				TiUIHelper.firePostLayoutEvent(proxy);
+				@Override
+				protected void onLayout(boolean changed, int left, int top, int right, int bottom)
+				{
+					super.onLayout(changed, left, top, right, bottom);
+					TiUIHelper.firePostLayoutEvent(proxy);
+				}
+			};
+		} else {
+			// A bug where PickerCalendarDelegate does not send events to the
+			// listener on API Level 21 (Android 5.0) for TIMOB-19192
+			// https://code.google.com/p/android/issues/detail?id=147657
+			// Work around is to use spinner view instead of calendar view in
+			// in Android 5.0
+			int datePickerSpinner;
+			try {
+				datePickerSpinner = TiRHelper.getResource("layout.titanium_ui_date_picker_spinner");
+			} catch (ResourceNotFoundException e) {
+				if (Log.isDebugModeEnabled()) {
+					Log.e(TAG, "XML resources could not be found!!!");
+				}
+				return;
 			}
-		};
+			picker = (DatePicker) activity.getLayoutInflater().inflate(datePickerSpinner, null);
+		}
 		setNativeView(picker);
 	}
 	
@@ -74,6 +97,7 @@ public class TiUIDatePicker extends TiUIView
         	minDateCalendar.set(Calendar.MILLISECOND, 0);
 
         	this.minDate = minDateCalendar.getTime();
+        	picker.setMinDate(minDateCalendar.getTimeInMillis());
         }
         if (d.containsKey(TiC.PROPERTY_CALENDAR_VIEW_SHOWN)) {
         	setCalendarView(TiConvert.toBoolean(d, TiC.PROPERTY_CALENDAR_VIEW_SHOWN));
@@ -87,6 +111,7 @@ public class TiUIDatePicker extends TiUIView
         	maxDateCalendar.set(Calendar.MILLISECOND, 0);
 
         	this.maxDate = maxDateCalendar.getTime();
+        	picker.setMaxDate(maxDateCalendar.getTimeInMillis());
         }
         if (d.containsKey("minuteInterval")) {
             int mi = d.getInt("minuteInterval");

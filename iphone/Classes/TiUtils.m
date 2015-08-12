@@ -1,6 +1,6 @@
 /**
  * Appcelerator Titanium Mobile
- * Copyright (c) 2009-2014 by Appcelerator, Inc. All Rights Reserved.
+ * Copyright (c) 2009-2015 by Appcelerator, Inc. All Rights Reserved.
  * Licensed under the terms of the Apache Public License
  * Please see the LICENSE included with this distribution for details.
  */
@@ -188,6 +188,11 @@ bool Base64AllocAndEncodeData(const void *inInputData, size_t inInputDataSize, c
 +(BOOL)isIOS8OrGreater
 {
     return [UIView instancesRespondToSelector:@selector(layoutMarginsDidChange)];
+}
+
++(BOOL)isIOS9OrGreater
+{
+    return [UIImage instancesRespondToSelector:@selector(flipsForRightToLeftLayoutDirection)];
 }
 
 +(BOOL)isIPad
@@ -773,30 +778,36 @@ If the new path starts with / and the base url is app://..., we have to massage 
 		return [NSURL URLWithString:relativeString];
 	}
 
-	NSURL *result = nil;
-		
-	// don't bother if we don't at least have a path and it's not remote
-	//TODO: What is this mess? -BTH
-	if ([relativeString hasPrefix:@"http://"] || [relativeString hasPrefix:@"https://"])
-	{
-		NSRange range = [relativeString rangeOfString:@"/" options:0 range:NSMakeRange(7, [relativeString length]-7)];
-		if (range.location!=NSNotFound)
-		{
-			NSString *firstPortion = [relativeString substringToIndex:range.location];
-			NSString *pathPortion = [relativeString substringFromIndex:range.location];
-			CFStringRef escapedPath = CFURLCreateStringByAddingPercentEscapes(kCFAllocatorDefault,
-					(CFStringRef)pathPortion, charactersToNotEscape,charactersThatNeedEscaping,
-					kCFStringEncodingUTF8);
-			relativeString = [firstPortion stringByAppendingString:(NSString *)escapedPath];
-			if(escapedPath != NULL)
-			{
-				CFRelease(escapedPath);
-			}
-		}
-	}
-
-	result = [NSURL URLWithString:relativeString relativeToURL:rootPath];
+    NSURL *result = nil;
     
+    // don't bother if we don't at least have a path and it's not remote
+    //TODO: What is this mess? -BTH
+    if ([relativeString hasPrefix:@"http://"] || [relativeString hasPrefix:@"https://"])
+    {
+        NSRange range = [relativeString rangeOfString:@"/" options:0 range:NSMakeRange(7, [relativeString length]-7)];
+        if (range.location!=NSNotFound)
+        {
+            NSString *firstPortion = [relativeString substringToIndex:range.location];
+            NSString *pathPortion = [relativeString substringFromIndex:range.location];
+            CFStringRef escapedPath = CFURLCreateStringByAddingPercentEscapes(kCFAllocatorDefault,
+                                                                              (CFStringRef)pathPortion, charactersToNotEscape,charactersThatNeedEscaping,
+                                                                              kCFStringEncodingUTF8);
+            relativeString = [firstPortion stringByAppendingString:(NSString *)escapedPath];
+            if(escapedPath != NULL)
+            {
+                CFRelease(escapedPath);
+            }
+        }
+        result = [NSURL URLWithString:relativeString relativeToURL:rootPath];
+    } else {
+        //only add percentescape if there are spaces in relativestring
+        if ([[relativeString componentsSeparatedByString:@" "] count] -1 == 0) {
+            result = [NSURL URLWithString:relativeString relativeToURL:rootPath];
+        }
+        else {
+            result = [NSURL URLWithString:[relativeString stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding] relativeToURL:rootPath];
+        }
+    }
     //TIMOB-18262
     if (result && ([[result scheme] isEqualToString:@"file"])){
         BOOL isDir = NO;

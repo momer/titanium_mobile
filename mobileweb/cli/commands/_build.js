@@ -25,9 +25,9 @@ const
 	afs = appc.fs,
 	parallel = appc.async.parallel;
 
-ejs.filters.escapeQuotes = function escapeQuotes(s) {
+function escapeQuotes(s) {
 	return String(s).replace(/"/g, '\\"');
-};
+}
 
 function MobileWebBuilder() {
 	Builder.apply(this, arguments);
@@ -238,9 +238,6 @@ MobileWebBuilder.prototype.initialize = function initialize(next) {
 	if (this.config.paths && Array.isArray(this.config.paths.modules)) {
 		this.moduleSearchPaths = this.moduleSearchPaths.concat(this.config.paths.modules);
 	}
-
-	this.ignoreDirs = new RegExp(this.config.get('cli.ignoreDirs'));
-	this.ignoreFiles = new RegExp(this.config.get('cli.ignoreFiles'));
 
 	this.projectDependencies = [];
 	this.modulesToLoad = [];
@@ -590,7 +587,7 @@ MobileWebBuilder.prototype.assembleTitaniumJS = function assembleTitaniumJS(next
 	async.waterfall([
 		// 1) render the header
 		function (next) {
-			next(null, ejs.render(fs.readFileSync(path.join(this.templatesDir, 'header.ejs')).toString()) + '\n');
+			next(null, ejs.render(fs.readFileSync(path.join(this.templatesDir, 'header.ejs')).toString(), { escapeQuotes: escapeQuotes }) + '\n');
 		}.bind(this),
 
 		// 2) read in the config.js and fill in the template
@@ -628,7 +625,8 @@ MobileWebBuilder.prototype.assembleTitaniumJS = function assembleTitaniumJS(next
 					hasAnalyticsUseXhr: tiapp.mobileweb.analytics ? tiapp.mobileweb.analytics['use-xhr'] === true : false,
 					hasShowErrors: this.deployType != 'production' && tiapp.mobileweb['disable-error-screen'] !== true,
 					hasInstrumentation: !!tiapp.mobileweb.instrumentation,
-					hasAllowTouch: tiapp.mobileweb.hasOwnProperty('allow-touch') ? !!tiapp.mobileweb['allow-touch'] : true
+					hasAllowTouch: tiapp.mobileweb.hasOwnProperty('allow-touch') ? !!tiapp.mobileweb['allow-touch'] : true,
+					escapeQuotes: escapeQuotes
 				},
 				next
 			);
@@ -801,7 +799,7 @@ MobileWebBuilder.prototype.assembleTitaniumJS = function assembleTitaniumJS(next
 
 MobileWebBuilder.prototype.assembleTitaniumCSS = function assembleTitaniumCSS(next) {
 	var tiCSS = [
-		ejs.render(fs.readFileSync(path.join(this.templatesDir, 'header.ejs')).toString()), '\n'
+		ejs.render(fs.readFileSync(path.join(this.templatesDir, 'header.ejs')).toString(), { escapeQuotes: escapeQuotes }), '\n'
 	];
 
 	if (this.tiapp.mobileweb.splash.enabled) {
@@ -864,7 +862,7 @@ MobileWebBuilder.prototype.assembleTitaniumCSS = function assembleTitaniumCSS(ne
 		fontFormats = {
 			'ttf': 'truetype'
 		},
-		prefix = this.projectResDir + '/';
+		prefix = this.projectResDir.replace(/\\/g, '/') + '/';
 
 	(function walk(dir, isMobileWebDir, isRoot) {
 		fs.existsSync(dir) && fs.readdirSync(dir).forEach(function (name) {
@@ -878,30 +876,30 @@ MobileWebBuilder.prototype.assembleTitaniumCSS = function assembleTitaniumCSS(ne
 
 			var m = name.match(/^(.+)\.(otf|woff|ttf|svg)$/);
 			if (m) {
-				var p = file.replace(prefix, '').replace(/\\/g, '/');
-				fonts[m[1]] || (fonts[m[1]] = []);
-				fonts[m[1]].push({
+				var p = file.replace(/\\/g, '/').replace(prefix, '');
+				fonts[m[1]] || (fonts[m[1]] = {});
+				fonts[m[1]][m[2]] = {
 					path: isMobileWebDir ? p.replace('mobileweb/', '') : p,
 					format: fontFormats[m[2]] || m[2]
-				});
+				};
 			}
 		});
 	}(this.projectResDir, false, true));
 
 	Object.keys(fonts).forEach(function (name) {
 		var font = fonts[name],
-			i = 0,
-			l = font.length,
 			src = [];
 
 		this.logger.debug(__('Found font: %s', name.cyan));
 
-		for (; i < l; i++) {
-			this.prefetch.push(font[i].path);
-			src.push('url("' + font[i].path + '") format("' + font[i].format + '")');
-		}
+		['woff', 'otf', 'ttf', 'svg'].forEach(function (type) {
+			if (font[type]) {
+				// this.prefetch.push(font[type].path);
+				src.push('url("' + font[type].path + '") format("' + font[type].format + '")');
+			}
+		}, this);
 
-		tiCSS.push('@font-face{font-family:"' + name + '";' + src.join(',') + ';}\n');
+		tiCSS.push('@font-face{font-family:"' + name + '";src:' + src.join(',') + ';}\n');
 	}, this);
 
 	// write the titanium.css
@@ -994,7 +992,8 @@ MobileWebBuilder.prototype.createIndexHtml = function createIndexHtml(next) {
 			tiCss: fs.readFileSync(path.join(this.buildDir, 'titanium.css')).toString(),
 			splashScreen: this.splashHtml,
 			tiJs: fs.readFileSync(path.join(this.buildDir, 'titanium.js')).toString(),
-			prefetch: this.prefetch
+			prefetch: this.prefetch,
+			escapeQuotes: escapeQuotes
 		},
 		next
 	);

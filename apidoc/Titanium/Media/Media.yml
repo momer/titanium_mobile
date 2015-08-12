@@ -7,7 +7,7 @@ description: |
     audio or video.
 
     For examples of using the Media APIs, refer to the
-    [Working with Media APIs guide](http://docs.appcelerator.com/titanium/latest/#!/guide/Working_with_Media_APIs)
+    [Working with Media APIs guide](http://docs.appcelerator.com/platform/latest/#!/guide/Working_with_Media_APIs)
     in addition to the other media submodule API documentation.
 extends: Titanium.Module
 since: "0.1"
@@ -134,18 +134,6 @@ methods:
         the [takePicture](Titanium.Media.takePicture) and [hideCamera](Titanium.Media.hideCamera)
         methods.
 
-        #### BlackBerry Platform Notes
-
-        To use this method on BlackBerry, you must include the `access_shared` and `use_camera`
-        permissions in the `tiapp.xml` file of your Titanium application:
-
-            <blackberry>
-                <permissions>
-                    <permission>access_shared</permission>
-                    <permission>use_camera</permission>
-                </permissions>
-            </blackberry>
-        
         #### iOS Platform Notes
 
         To suppress the default controls, set `showControls` and `autohide` to `false`.
@@ -153,7 +141,7 @@ methods:
         If the `showControls` option is `false`, you must control the camera explicitly, using
         the [takePicture](Titanium.Media.takePicture) and [hideCamera](Titanium.Media.hideCamera)
         methods.
-    platforms: [iphone, ipad, android, blackberry]
+    platforms: [iphone, ipad, android]
     parameters:
       - name: options
         summary: A dictionary of camera options as described in <CameraOptionsType>.
@@ -201,6 +189,20 @@ methods:
         android: 3.2.0
         iphone: 1.8.1
         ipad: 1.8.1
+  - name: requestCameraAccess
+    summary: Requests for camera access.
+    description: |
+       This method allows the app to request for camera access, before or without the user granting
+       it in <Titanium.Media.showCamera>. The request view will only show if user has not yet made 
+       a decision. If he has, the callback will return his earlier decision, and if any changes has
+       to be made, the user has to change it in the device settings.
+    parameters:
+      - name: callback
+        summary: Function to call upon user decision to grant camera access.
+        type: Callback<RequestCameraAccessResult>
+    platforms: [iphone, ipad]
+    since: "4.0.0"
+    osver: {ios: {min: "7.0"}}
   - name: takeScreenshot
     summary: Takes a screen shot of the visible UI on the device.
     description: |
@@ -697,11 +699,39 @@ properties:
     platforms: [iphone, ipad, android]
     since:
         android: "3.2.0"
+  - name: CAMERA_AUTHORIZATION_AUTHORIZED
+    summary: Constant specifying that app is authorized to use camera. This is available on iOS7 and later.
+    type: Number
+    permission: read-only
+    platforms: [iphone, ipad]
+    since: "4.0.0"
+    osver: {ios: {min: "7.0"}}
+  - name: CAMERA_AUTHORIZATION_DENIED
+    summary: Constant specifying that app is denied usage of camera. This is available on iOS7 and later.
+    type: Number
+    permission: read-only
+    platforms: [iphone, ipad]
+    since: "4.0.0"
+    osver: {ios: {min: "7.0"}}
+  - name: CAMERA_AUTHORIZATION_RESTRICTED
+    summary: Constant specifying that app is restricted from using camera. This is available on iOS7 and later.
+    type: Number
+    permission: read-only
+    platforms: [iphone, ipad]
+    since: "4.0.0"
+    osver: {ios: {min: "7.0"}}
+  - name: CAMERA_AUTHORIZATION_NOT_DETERMINED
+    summary: Constant specifying that app is not yet authorized to use camera. This is available on iOS7 and later.
+    type: Number
+    permission: read-only
+    platforms: [iphone, ipad]
+    since: "4.0.0"
+    osver: {ios: {min: "7.0"}}
   - name: DEVICE_BUSY
     summary: Constant for media device busy error.
     type: Number
     permission: read-only
-    exclude-platforms: [blackberry]
+
   - name: MEDIA_TYPE_PHOTO
     summary: Media type constant for photo media.
     type: String
@@ -710,7 +740,7 @@ properties:
     summary: Media type constant for video media.
     type: String
     permission: read-only
-    exclude-platforms: [blackberry]
+
   - name: MUSIC_MEDIA_TYPE_ALL
     summary: Music library media containing any type of content.
     type: Number
@@ -860,12 +890,12 @@ properties:
     summary: Constant for media no camera error.
     type: Number
     permission: read-only
-    exclude-platforms: [blackberry]
+
   - name: NO_VIDEO
     summary: Constant for media no video error.
     type: Number
     permission: read-only
-    exclude-platforms: [blackberry]
+
   - name: QUALITY_HIGH
     summary: Media type constant for high-quality video recording. 
     description: |
@@ -893,7 +923,7 @@ properties:
     summary: Constant for unknown media error.
     type: Number
     permission: read-only
-    exclude-platforms: [blackberry]
+
   - name: VIDEO_CONTROL_DEFAULT
     summary: Constant for default video controls.
     description: |
@@ -902,7 +932,7 @@ properties:
         of <Titanium.Media.VideoPlayer>.
     type: Number
     permission: read-only
-    exclude-platforms: [blackberry]
+
   - name: VIDEO_CONTROL_EMBEDDED
     summary: Constant for video controls for an embedded view. 
     description: |
@@ -960,7 +990,7 @@ properties:
         of <Titanium.Media.VideoPlayer>.
     type: Number
     permission: read-only
-    exclude-platforms: [blackberry]
+
   - name: VIDEO_CONTROL_VOLUME_ONLY
     deprecated:
         since: "1.8.0"
@@ -1076,7 +1106,7 @@ properties:
         is filled with a black bar. The aspect ratio of the movie is preserved.
     type: Number
     permission: read-only
-    exclude-platforms: [blackberry]
+
   - name: VIDEO_SCALING_MODE_FILL
     summary: Video is scaled until both dimensions fit the screen exactly, stretching if necessary.
     description: |
@@ -1088,7 +1118,7 @@ properties:
     summary: Video scaling is disabled.
     type: Number
     permission: read-only
-    exclude-platforms: [blackberry]
+
   - name: VIDEO_SOURCE_TYPE_FILE
     summary: Video source type is a file. 
     description: Related to the `sourceType` property of <Titanium.Media.VideoPlayer>.
@@ -1238,6 +1268,15 @@ properties:
     type: Boolean
     platforms: [iphone, ipad, android]
     permission: read-only
+  - name: cameraAuthorizationStatus
+    summary: |
+        Returns the authorization status for the camera.
+    type: Number
+    constants: Titanium.Media.CAMERA_AUTHORIZATION_*
+    platforms: [iphone, ipad]
+    permission: read-only
+    since: "4.0.0"
+    osver: {ios: {min: "7.0"}}
   - name: peakMicrophonePower
     summary: Current microphone level peak power in dB or -1 if microphone monitoring is disabled.
     description: |
@@ -1633,6 +1672,10 @@ properties:
     accessors: false
 ---
 name: MediaAuthorizationResponse
+summary: Argument passed to the callback when a request finishes successfully or erroneously.
+extends: ErrorResponse
+---
+name: RequestCameraAccessResult
 summary: Argument passed to the callback when a request finishes successfully or erroneously.
 extends: ErrorResponse
 ---

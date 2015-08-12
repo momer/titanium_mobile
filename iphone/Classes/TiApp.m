@@ -1,6 +1,6 @@
 /**
  * Appcelerator Titanium Mobile
- * Copyright (c) 2009-2014 by Appcelerator, Inc. All Rights Reserved.
+ * Copyright (c) 2009-2015 by Appcelerator, Inc. All Rights Reserved.
  * Licensed under the terms of the Apache Public License
  * Please see the LICENSE included with this distribution for details.
  */
@@ -12,8 +12,6 @@
 #import "TiErrorController.h"
 #import "NSData+Additions.h"
 #import "ImageLoader.h"
-#import "TiDebugger.h"
-#import "TiProfiler/TiProfiler.h"
 #import <QuartzCore/QuartzCore.h>
 #import <AVFoundation/AVFoundation.h>
 #import "ApplicationDefaults.h"
@@ -22,6 +20,10 @@
 #import "Mimetypes.h"
 #ifdef KROLL_COVERAGE
 # import "KrollCoverage.h"
+#endif
+#ifndef USE_JSCORE_FRAMEWORK
+#import "TiDebugger.h"
+#import "TiProfiler/TiProfiler.h"
 #endif
 
 TiApp* sharedApp;
@@ -65,10 +67,12 @@ TI_INLINE void waitForMemoryPanicCleared();   //WARNING: This must never be run 
 @synthesize localNotification;
 @synthesize appBooted;
 
+#ifdef TI_USE_KROLL_THREAD
 +(void)initialize
 {
 	TiThreadInitalize();
 }
+#endif
 
 + (TiApp*)app
 {
@@ -174,12 +178,27 @@ TI_INLINE void waitForMemoryPanicCleared();   //WARNING: This must never be run 
     }
 }
 
+- (void)createDefaultDirectories
+{
+    NSError* error = nil;
+    NSURL* dir = [[NSFileManager defaultManager] URLForDirectory:NSApplicationSupportDirectory
+                                                        inDomain:NSUserDomainMask
+                                               appropriateForURL:nil
+                                                          create:YES
+                                                           error:&error];
+    if(error)
+    {
+        DebugLog(@"[ERROR]  %@ %@", error, [error userInfo]);
+    }
+}
+
 - (void)boot
 {
 	DebugLog(@"[INFO] %@/%@ (%s.__GITHASH__)",TI_APPLICATION_NAME,TI_APPLICATION_VERSION,TI_VERSION_STR);
 	
 	sessionId = [[TiUtils createUUID] retain];
 	TITANIUM_VERSION = [[NSString stringWithCString:TI_VERSION_STR encoding:NSUTF8StringEncoding] retain];
+#ifndef USE_JSCORE_FRAMEWORK
 	NSString *filePath = [[NSBundle mainBundle] pathForResource:@"debugger" ofType:@"plist"];
     if (filePath != nil) {
         NSMutableDictionary *params = [[[NSMutableDictionary alloc] initWithContentsOfFile:filePath] autorelease];
@@ -246,6 +265,7 @@ TI_INLINE void waitForMemoryPanicCleared();   //WARNING: This must never be run 
 		}
 #endif
     }
+#endif
     [self appBoot];
 }
 
@@ -383,7 +403,7 @@ TI_INLINE void waitForMemoryPanicCleared();   //WARNING: This must never be run 
 	}
     [self launchToUrl];
 	[self boot];
-	
+    [self createDefaultDirectories];
 	return YES;
 }
 
@@ -463,6 +483,48 @@ TI_INLINE void waitForMemoryPanicCleared();   //WARNING: This must never be run 
     [[NSNotificationCenter defaultCenter] postNotificationName:kTiRemoteNotificationAction object:event userInfo:nil];
     [event autorelease];
     completionHandler();
+}
+
+
+#pragma mark Apple Watchkit handleWatchKitExtensionRequest
+- (void)application:(UIApplication *)application
+            handleWatchKitExtensionRequest:(NSDictionary *)userInfo
+              reply:(void (^)(NSDictionary *replyInfo))reply
+{
+
+    // Generate unique key with timestamp.
+    id key = [NSString stringWithFormat:@"watchkit-reply-%f",[[NSDate date] timeIntervalSince1970]];
+    
+    if (pendingReplyHandlers == nil) {
+        pendingReplyHandlers = [[NSMutableDictionary alloc] init];
+    }
+    
+    [pendingReplyHandlers setObject:[[reply copy] autorelease ]forKey:key];
+    
+    NSMutableDictionary* dic = [[[NSMutableDictionary alloc] init] autorelease];
+    [dic setObject:key forKey:@"handlerId"];
+    if(userInfo!=nil){
+        [dic setObject:userInfo forKey:@"userInfo"];
+    }
+    
+    [[NSNotificationCenter defaultCenter] postNotificationName:kTiWatchKitExtensionRequest object:self userInfo:dic];
+}
+
+-(void)watchKitExtensionRequestHandler:(id)key withUserInfo:(NSDictionary*)userInfo
+{
+    if (pendingReplyHandlers == nil) {
+        DebugLog(@"[ERROR] No WatchKitExtensionRequest have been recieved yet");
+        return;
+    }
+
+    if ([pendingReplyHandlers objectForKey:key]) {
+        void(^replyBlock)(NSDictionary *input);
+        replyBlock = [pendingReplyHandlers objectForKey:key];
+        replyBlock(userInfo);
+        [pendingReplyHandlers removeObjectForKey:key];
+    } else {
+        DebugLog(@"[ERROR] The specified WatchKitExtensionRequest Handler with ID: %@ has already expired or removed from the system", key);
+    }
 }
 
 #pragma mark -
@@ -695,6 +757,7 @@ expectedTotalBytes:(int64_t)expectedTotalBytes {
 
 #pragma mark
 
+#ifdef TI_USE_KROLL_THREAD
 -(void)waitForKrollProcessing
 {
 	CGFloat timeLeft = [[UIApplication sharedApplication] backgroundTimeRemaining]-1.0;
@@ -714,6 +777,7 @@ expectedTotalBytes:(int64_t)expectedTotalBytes {
 	}
 	TiThreadProcessPendingMainThreadBlocks(timeLeft, NO, nil);
 }
+#endif
 
 - (void)applicationWillTerminate:(UIApplication *)application
 {
@@ -744,8 +808,9 @@ expectedTotalBytes:(int64_t)expectedTotalBytes {
 
 	//This will shut down the modules.
 	[theNotificationCenter postNotificationName:kTiShutdownNotification object:self];
+#ifdef TI_USE_KROLL_THREAD
 	[self waitForKrollProcessing];
-
+#endif
 	RELEASE_TO_NIL(condition);
 	RELEASE_TO_NIL(kjsBridge);
 #ifdef USE_TI_UIWEBVIEW 
@@ -782,7 +847,9 @@ expectedTotalBytes:(int64_t)expectedTotalBytes {
 #ifdef USE_TI_UIWEBVIEW
 	[xhrBridge gc];
 #endif 
+#ifdef TI_USE_KROLL_THREAD
 	[self waitForKrollProcessing];
+#endif
 }
 
 - (void)applicationDidBecomeActive:(UIApplication *)application
@@ -828,7 +895,9 @@ expectedTotalBytes:(int64_t)expectedTotalBytes {
         // Do the work associated with the task.
 		[tiapp beginBackgrounding];
     });
+#ifdef TI_USE_KROLL_THREAD
 	[self waitForKrollProcessing];
+#endif
 }
 
 -(void)applicationWillEnterForeground:(UIApplication *)application
@@ -851,6 +920,45 @@ expectedTotalBytes:(int64_t)expectedTotalBytes {
 	
 	[self endBackgrounding];
 
+}
+
+#pragma mark Handoff Delegates
+
+- (BOOL)application:(UIApplication *)application continueUserActivity:(NSUserActivity *)userActivity
+ restorationHandler:(void (^)(NSArray *restorableObjects))restorationHandler
+{
+    
+    NSMutableDictionary *dict = [NSMutableDictionary
+                                 dictionaryWithObjectsAndKeys:[userActivity activityType],@"activityType",
+                                 nil];
+    
+    if([userActivity title] !=nil)
+    {
+        [dict setObject:[userActivity title] forKey:@"title"];
+    }
+    
+    if([userActivity webpageURL] !=nil)
+    {
+        [dict setObject:[[userActivity webpageURL] absoluteString] forKey:@"webpageURL"];
+    }
+    
+    if([userActivity userInfo] !=nil)
+    {
+        [dict setObject:[userActivity userInfo] forKey:@"userInfo"];
+    }
+    
+    if (appBooted)
+    {
+        [[NSNotificationCenter defaultCenter] postNotificationName:kTiHandOff object:self userInfo:dict];
+    }
+    else
+    {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 2 * NSEC_PER_SEC), dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+            [[NSNotificationCenter defaultCenter] postNotificationName:kTiHandOff object:self userInfo:dict];
+        });
+    }
+    
+    return YES;
 }
 
 #pragma mark Push Notification Delegates
@@ -954,9 +1062,11 @@ expectedTotalBytes:(int64_t)expectedTotalBytes {
 	RELEASE_TO_NIL(remoteDeviceUUID);
 	RELEASE_TO_NIL(remoteNotification);
 	RELEASE_TO_NIL(splashScreenImage);
+#ifndef USE_JSCORE_FRAMEWORK
     if ([self debugMode]) {
         TiDebuggerStop();
     }
+#endif
 	RELEASE_TO_NIL(backgroundServices);
 	RELEASE_TO_NIL(localNotification);
 	[super dealloc];

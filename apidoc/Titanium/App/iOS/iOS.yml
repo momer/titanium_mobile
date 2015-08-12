@@ -23,7 +23,7 @@ description: |
          notification.
 
     For instructions on sending local interactive notifications, see the
-    [iOS Local Notifications guide](http://docs.appcelerator.com/titanium/latest/#!/guide/iOS_Local_Notifications).
+    [iOS Local Notifications guide](http://docs.appcelerator.com/platform/latest/#!/guide/iOS_Local_Notifications).
 
     ### Local Interactive Notifications
 
@@ -43,7 +43,7 @@ description: |
       4. Monitor the [localnotificationaction](Titanium.App.iOS.localnotificationaction) event.
 
     For instructions on sending local interactive notifications, see the
-    [iOS Local Notifications guide](http://docs.appcelerator.com/titanium/latest/#!/guide/iOS_Local_Notifications).
+    [iOS Local Notifications guide](http://docs.appcelerator.com/platform/latest/#!/guide/iOS_Local_Notifications).
 
     ### Background Downloads
 
@@ -51,7 +51,7 @@ description: |
     content in the background. These background modes are supported in Titanium SDK 3.2.0 and later.
 
     For more information on getting started, refer to the
-    [iOS Background Services guide](http://docs.appcelerator.com/titanium/latest/#!/guide/iOS_Background_Services).
+    [iOS Background Services guide](http://docs.appcelerator.com/platform/latest/#!/guide/iOS_Background_Services).
 
 extends: Titanium.Module
 platforms: [iphone, ipad]
@@ -152,6 +152,39 @@ methods:
     osver: {ios: {min: "7.0"}}
     since: "3.2.0"
 
+  - name: sendWatchExtensionReply
+    deprecated:
+        since: "4.3.0"
+        notes: |
+            Use <Titanium.App.iOS.WatchConnectivity> instead, which is supported on iOS 9 and later.
+    summary: |
+        Marks the end of an openParentApplication:reply execution by a WatchKit extension.
+        Available only on iOS 8.2 and later.
+    description: |
+        This method must be called after your Titaium application has finished processing the `watchkitextensionrequest` event. Optional
+        information can be provided in the userInfo argument will be provided back to the WatchKit extension as part of the reply method.
+        If no userInfo is provide nil will be sent to the WatchKit extension to during the reply callback.
+
+        This method should be used as part of the `watchkitextensionrequest` event as shown below.
+        
+        Ti.App.iOS.addEventListener("watchkitextensionrequest",function(e){
+            var replyContent = {foo:"bar"};
+            Ti.App.iOS.sendWatchExtensionReply(e.handlerId,replyContent);
+        });
+
+    parameters:
+      - name: handlerId
+        summary: |
+            Unique string identifer for the event (`watchkitextensionrequest`)
+            that initiated from the WatchKit extension calling the openParentApplication:reply method.
+        type: String
+      - name: userInfo
+        summary: |
+            Custom data object which will be passed in the reply method to your WatchKit extension.
+        type: Dictionary        
+    osver: {ios: {min: "8.2"}}
+    since: "4.1.0"
+
 properties:
   - name: EVENT_ACCESSIBILITY_LAYOUT_CHANGED
     summary: Convenience constant for system event "accessibilitylayoutchanged".
@@ -245,6 +278,33 @@ properties:
     permission: read-only
     osver: {ios: {min: "8.0"}}
     since: "3.4.0"
+
+  - name: supportedUserActivityTypes
+    summary: |
+        Provides an Array of the NSUserActivityTypes keys defined within your Titanium project.
+        (available on iOS 8 and later).
+    description: |        
+        Used to obtain a list of the NSUserActivityTypes keys defined in your Titanium project's tiapp.xml file. 
+        These NSUserActivityTypes keys are the keys which you can use working with iOS Titanium User Activities.
+        NSUserActivityTypes must be defined at build time in your tiapp.xml file as shown below:
+
+            <ios>
+              <plist>
+              <dict>
+                <key>NSUserActivityTypes</key>
+                  <array>
+                    <string>com.setdirection.home</string>
+                    <string>com.setdirection.shelf</string>
+                    <string>com.setdirection.item</string>
+                  </array>
+                </dict>
+                </plist>
+              </ios>
+
+    type: Array<String>
+    permission: read-only
+    osver: {ios: {min: "8.0"}}
+    since: "4.3.0"
 
   - name: applicationOpenSettingsURL
     summary: Returns a URL to open the app's settings.
@@ -568,7 +628,6 @@ events:
     osver: {ios: {min: "7.0"}}
     since: "3.2.0"
 
-
   - name: usernotificationsettings
     summary: |
         Fired when the user notification settings are registered (available for iOS 8 and later).
@@ -583,6 +642,74 @@ events:
         type: Array<Titanium.App.iOS.UserNotificationCategory>
     osver: {ios: {min: "8.0"}}
     since: "3.4.0"
+
+  - name: watchkitextensionrequest
+    deprecated:
+        since: "4.3.0"
+        notes: |
+            Use <Titanium.App.iOS.WatchConnectivity> instead, which is supported on iOS9 and later.
+    summary: Fired when openParentApplication:reply is called from a WatchKit extension. Available only on iOS 8.2 and later.
+    description: |
+        Add this event if your Titanium application if you are using a WatchKit extension.  When your WatchKit extension uses the openParentApplication:reply
+        method your Titanium application will be opened in the background and provides your Titanium app the information from the extension. When this
+        event is fired you must provide a reply by calling the [sendWatchExtensionReply](Titanium.App.iOS.sendWatchExtensionReply) method with
+        the `handlerID` parameter from this event.
+
+        The event returns the dictionary containing the `handlerID` property, which is a unique handler ID for the
+        current event and the `userInfo` property, containing the dictionary passed from the WatchKit extension.  The `handlerID` identifier
+        must be passed as the an argument to the [sendWatchExtensionReply](Titanium.App.iOS.sendWatchExtensionReply) method.
+
+        Ti.App.iOS.addEventListener("watchkitextensionrequest",function(e){
+            var replyContent = {foo:"bar"};
+            Ti.App.iOS.sendWatchExtensionReply(e.handlerId,replyContent);
+        });
+
+    properties:
+      - name: handlerId
+        summary: |
+            Unique string identifer for the `watchkitextensionrequest` event. This identifier should be passed an argument
+            to the [sendWatchExtensionReply](Titanium.App.iOS.sendWatchExtensionReply) method.
+        type: String
+      - name: userInfo
+        summary: |
+            The payload passed to the openParentApplication:reply method from the WatchKit extension.
+        type: Dictionary
+    platforms: [iphone, ipad]
+    osver: {ios: {min: "8.2"}}
+    since: '4.1.0'
+
+  - name: handoff
+    summary: Fired when iOS Handoff calls continueUserActivity. Available only on iOS 8.2 and later.
+    description: |
+        Add this event if your Titanium application if you are responding to an iOS Handoff continueUserActivity request. When the user taps on the handoff icon
+        your Titanium application will be opened in the background and provides your Titanium app the information from the NSUserActivity. When this
+        event is fired you should implement logic within your application to allow the user to pick-up from where they left off on their other device.
+
+        Ti.App.iOS.addEventListener("handoff",function(e){
+            console.log("activityType: " + e.activityType);
+        });
+
+    properties:
+      - name: activityType
+        summary: |
+            Unique string identifer for handoff user activity. This identifier must be defined in your tiapp.xml file.
+        type: String
+      - name: title
+        summary: |
+            The optional title provided to the handoff user activity.
+        type: String
+      - name: webpageURL
+        summary: |
+            The optional webpageURL provided to the handoff user activity.
+        type: String
+      - name: userInfo
+        summary: |
+            The optional userInfo provided to the handoff user activity.  The userInfo is a custom dictionary and can contain any information needed 
+            to create your handoff session.
+        type: Dictionary
+    platforms: [iphone, ipad]
+    osver: {ios: {min: "8.2"}}
+    since: '4.3.0'
 
 ---
 name: NotificationParams
